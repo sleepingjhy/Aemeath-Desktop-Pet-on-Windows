@@ -1,19 +1,26 @@
-Ameath Desktop Pet（Windows）使用说明（v1.2.1）
+Ameath Desktop Pet（Windows）使用说明（v1.3.1）
 
 ============================================================
-一、版本更新（v1.2.1）
+一、版本更新（v1.3.1）
 ============================================================
-1. 修复：在“其他应用全屏时隐藏”显示模式下，部分实例在从全屏场景恢复后可能无法重新显示的问题。
-2. 优化：从隐藏状态恢复时会主动补全检查全部实例可见性，避免遗漏实例。
+1. 新增：聊天接入 DeepSeek API，实现角色化多轮对话。
+2. 新增：搜索模块 `pet/search`，支持本地资料检索（`pet/search/data/`）并拼接上下文再生成回复。
+3. 新增：支持本地资料格式 `.md/.txt/.json/.yml/.yaml`；针对时效问题可补充联网搜索结果。
+4. 新增：独立聊天窗口支持删除对话（按钮删除 + 右键会话项删除）。
+5. 修复：删除会话时同步清理内存缓存（消息缓存、待处理回复队列、请求映射），避免残留回写。
+6. 修复：退出链路中的聊天线程与窗口释放问题，降低内存泄漏风险。
 
 ============================================================
 二、快速开始
 ============================================================
 1. 双击根目录中的 `AmeathDesktopPet.exe` 启动程序（开发模式可执行 `python main.py`）。
-2. 启动后会同时出现：
+2. （可选）如需启用角色对话 API，请配置环境变量：
+   - PowerShell：`$env:DEEPSEEK_API_KEY="YOUR_API_KEY"`
+3. 启动后会同时出现：
    - 桌宠窗口（可拖动、右键菜单控制）
-   - 应用主界面（设置 / 音乐 / 关于）
-3. 关闭主界面不一定退出程序，可能最小化到系统托盘。
+   - 应用主界面（设置 / 聊天 / 音乐 / 关于）
+4. 关闭主界面不一定退出程序，可能最小化到系统托盘。
+5. 本地角色资料请放入 `pet/search/data/`，检索命中后会自动参与对话生成。
 
 ============================================================
 三、桌宠交互与动画
@@ -57,6 +64,12 @@ Ameath Desktop Pet（Windows）使用说明（v1.2.1）
    - 每次询问
    - 直接退出应用
    - 最小化到系统托盘
+
+【聊天页】
+1. 提供打开独立聊天窗口入口。
+2. 聊天支持 DeepSeek API 角色对话。
+3. 会优先检索 `pet/search/data/` 本地资料并拼接上下文后再生成回复。
+4. 支持删除对话（按钮 + 右键会话项删除），删除时会同步清理会话内存缓存。
 
 【音乐页】
 1. 显示当前歌曲名、播放进度（可拖动跳转）、当前时间/总时长。
@@ -127,23 +140,30 @@ Ameath Desktop Pet（Windows）使用说明（v1.2.1）
 祝你使用愉快！
 
 ------------------------------------------------------------
-English Version (v1.2.1)
+English Version (v1.3.1)
 ------------------------------------------------------------
 
 Ameath Desktop Pet (Windows) User Guide
 
-1) What's New in v1.2.1
-- Fixed an issue where some pet instances might fail to reappear after leaving fullscreen scenarios under "Hide when other apps are fullscreen" mode.
-- Improved recovery logic to restore visibility for all hidden instances reliably.
+1) What's New in v1.3.1
+- Added DeepSeek API integration for role-based chat.
+- Added `pet/search` module and local profile retrieval from `pet/search/data/` before response generation.
+- Supported local data formats: `.md/.txt/.json/.yml/.yaml`; timely queries can append online search context when needed.
+- Added conversation deletion in standalone chat window (button + right-click item deletion).
+- Fixed cache cleanup on conversation deletion (messages, pending queue, request map).
+- Improved exit-path cleanup for chat thread/window lifecycle to reduce memory-leak risk.
 
 2) Quick Start
 - Launch `AmeathDesktopPet.exe` (or run `python main.py` in development).
-- App starts both the pet window and the main UI (Settings / Music / About).
+- Optional: set API key in PowerShell: `$env:DEEPSEEK_API_KEY="YOUR_API_KEY"`.
+- App starts both the pet window and the main UI (Settings / Chat / Music / About).
 - Closing main UI may minimize to tray depending on close policy.
+- Put local profile files under `pet/search/data/`; matched snippets will be used as chat context automatically.
 
 3) Core Features
 - Drag with left mouse button.
 - Right-click menu per instance: open app, move toggle, follow mouse, scale, opacity, display mode, instance count, autostart, language, close actions, music controls.
+- Chat supports DeepSeek role dialogue with local profile retrieval and optional online search context for timely queries.
 - 5 UI languages: `中文 / English / 日本語 / 한국어 / Français`.
 - Multi-instance support (`0~50`) with collision separation and non-overlap placement.
 

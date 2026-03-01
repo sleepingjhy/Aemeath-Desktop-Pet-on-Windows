@@ -51,6 +51,51 @@ pip install -r requirements.txt
 python main.py
 ```
 
+4. （可选）启用 DeepSeek + 本地角色设定检索
+
+```powershell
+$env:DEEPSEEK_API_KEY="YOUR_API_KEY"
+```
+
+- 聊天模块会优先检索 `pet/search/data/` 下的角色设定文件（支持 `.md/.txt/.json/.yml/.yaml`）。
+- 检索命中的片段会自动拼接到系统上下文，再调用 DeepSeek 生成回复。
+- 若未配置 `DEEPSEEK_API_KEY`，聊天会提示缺少环境变量。
+
+---
+
+## v1.3.1
+
+### 🤖 API 角色对话能力接入
+
+- 聊天模块正式接入 DeepSeek API，可基于角色设定进行连续对话。
+- 新增历史对话上下文拼接与摘要策略，提升多轮对话连续性与角色一致性。
+- 未配置 `DEEPSEEK_API_KEY` 时会给出明确提示，便于快速排查环境配置。
+
+### 🔎 搜索模块与本地资料检索
+
+- 新增 `pet/search` 搜索模块（检索器 + 上下文编排器）。
+- 聊天请求会优先检索 `pet/search/data/` 本地资料并构建上下文后再调用模型。
+- 支持本地资料格式：`.md/.txt/.json/.yml/.yaml`。
+- 对“最新/最近/更新”等时效问题可补充联网搜索结果，回答更完整。
+
+### 🧹 会话管理增强（删除对话）
+
+- 独立聊天窗口左侧会话列表新增 **删除对话** 按钮。
+- 支持 **右键会话项删除**，操作路径与按钮删除一致。
+- 删除前会弹出确认提示，避免误删。
+- 删除后会自动切换到可用会话；当最后一个会话被删除时会自动创建默认新会话。
+
+### 🧠 缓存同步清理
+
+- 删除会话时会同步清理该会话对应的内存缓存：消息缓存、待处理回复队列、请求映射。
+- 修复会话删除后潜在的异步请求残留问题，避免已删除会话继续回写消息。
+
+### ♻️ 退出链路内存泄漏修复
+
+- 聊天会话新增退出释放逻辑：应用退出时显式停止/回收聊天回复线程并清空会话缓存。
+- 聊天窗口改为关闭即销毁（`WA_DeleteOnClose`），避免窗口对象长驻。
+- 会话列表右键临时菜单补充释放，减少频繁操作下的对象堆积风险。
+
 ---
 
 ## v1.3.0
@@ -247,10 +292,14 @@ python main.py
     ├── 🎞️ animation.py       # GIF 播放、缩放、镜像绘制
     ├── 🖥️ app_window.py      # 应用主界面（设置/聊天/音乐/关于页面）
     ├── 📁 chat
-    │   ├── 🔌 api.py         # 聊天 Agent API 占位层（后续可接 DeepSeek）
+    │   ├── 🔌 api.py         # DeepSeek 聊天 API 适配与检索编排
     │   ├── 🗃️ session.py     # 聊天会话状态与消息缓存
     │   ├── 🧩 widgets.py     # 聊天气泡/消息流/输入区 UI 组件
     │   └── 💬 window.py      # 独立聊天窗口
+    ├── 📁 search
+    │   ├── 🧠 retriever.py   # 本地角色设定检索
+    │   ├── 🧩 orchestrator.py # 检索上下文拼装
+    │   └── 📁 data           # 本地角色设定资料目录
     ├── 📁 music
     │   └── music_player.py   # 全局音乐播放器单例（QMediaPlayer）
     ├── 🪟 window.py          # 桌宠窗口与状态调度中心
@@ -302,6 +351,30 @@ python main.py
 ```
 
 ### Core Features
+
+#### v1.3.1
+
+- API role-chat integration:
+  - Integrated DeepSeek API into chat flow for role-based conversations.
+  - Added history-context assembly and lightweight summary strategy to improve multi-turn consistency.
+  - Added explicit runtime hint when `DEEPSEEK_API_KEY` is missing.
+- Search module and local profile retrieval:
+  - Added `pet/search` module (retriever + context orchestrator).
+  - Chat now prioritizes retrieval from local files under `pet/search/data/` before model generation.
+  - Supported local profile formats: `.md/.txt/.json/.yml/.yaml`.
+  - For timely queries (for example latest updates), online search context can be appended when needed.
+- Conversation management improvements:
+  - Added `Delete Conversation` button to the standalone chat window sidebar.
+  - Added right-click deletion for conversation items in the conversation list.
+  - Added confirmation dialog before deletion to reduce accidental operations.
+  - After deletion, UI automatically switches to an available conversation; if the last one is deleted, a default new conversation is created automatically.
+- Synchronized memory cleanup on conversation deletion:
+  - Deleting a conversation now also clears its in-memory message cache, pending reply queue entries, and request mapping records.
+  - Prevents stale async replies from being appended to already-deleted conversations.
+- Memory leak hardening on exit path:
+  - Added explicit chat-session dispose flow to stop/reclaim chat reply worker thread and clear caches on app quit.
+  - Standalone chat window now uses close-to-destroy behavior (`WA_DeleteOnClose`).
+  - Temporary right-click context menu objects in conversation list are now explicitly released.
 
 #### v1.3.0
 

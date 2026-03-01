@@ -2,3 +2,5 @@ PySide6>=6.10.2
 PySide6-Addons>=6.10.2
 PySide6-Essentials>=6.10.2
 PyInstaller>=6.19.0
+openai>=1.0.0
+duckduckgo-search>=6.2.13

@@ -4,6 +4,19 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
+# 统一终端编码，避免中文提示在不同 PowerShell 终端中出现乱码。
+try {
+    chcp 65001 | Out-Null
+} catch {
+}
+try {
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [Console]::InputEncoding = $utf8NoBom
+    [Console]::OutputEncoding = $utf8NoBom
+    $OutputEncoding = $utf8NoBom
+} catch {
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
@@ -33,6 +46,18 @@ if ($Clean) {
 
 $distRoot = Join-Path $root "exe\dist\AmeathDesktopPet"
 
+# 同步聊天/表情等文件资源目录。
+$distGifs = Join-Path $distRoot "gifs"
+if (Test-Path $distGifs) {
+    Remove-Item -Recurse -Force $distGifs -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Path $distGifs -Force | Out-Null
+
+$srcGifs = Join-Path $root "gifs"
+if (Test-Path $srcGifs) {
+    Copy-Item -Path (Join-Path $srcGifs "*") -Destination $distGifs -Recurse -Force
+}
+
 # 将 music 目录单独放到产物根目录，便于普通用户自行增删音乐文件。
 $distMusic = Join-Path $distRoot "music"
 if (Test-Path $distMusic) {
@@ -42,7 +67,11 @@ New-Item -ItemType Directory -Path $distMusic -Force | Out-Null
 
 $srcMusic = Join-Path $root "music"
 if (Test-Path $srcMusic) {
-    Copy-Item -Path (Join-Path $srcMusic "*") -Destination $distMusic -Recurse -Force
+    Get-ChildItem -Path $srcMusic -Force |
+        Where-Object { $_.Name -notin @('.gitignore', '.gitkeep') } |
+        ForEach-Object {
+            Copy-Item -Path $_.FullName -Destination (Join-Path $distMusic $_.Name) -Recurse -Force
+        }
 }
 
 # 同步普通用户说明文档到产物根目录（排除开发用 requirements.txt）。

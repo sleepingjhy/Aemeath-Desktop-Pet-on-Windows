@@ -40,6 +40,7 @@ class SettingsStore:
             "follow_mouse": False,
             "scale_factor": 1.0,
             "language": "zh-CN",
+            "api_key": "",
         }
         self._load()
 
@@ -199,4 +200,18 @@ class SettingsStore:
         """更新界面语言配置并保存。"""
         """EN: Update the interface language configuration and save."""
         self.data["language"] = normalize_language(language)
+        self.save()
+
+    def get_api_key(self) -> str:
+        """读取 DeepSeek API Key。"""
+        """EN: Read the DeepSeek API key."""
+        value = self.data.get("api_key", "")
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    def set_api_key(self, api_key: str):
+        """更新 DeepSeek API Key 并保存。"""
+        """EN: Update DeepSeek API key and save."""
+        self.data["api_key"] = str(api_key or "").strip()
         self.save()

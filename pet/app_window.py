@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import os
+
 from PySide6.QtCore import QEvent, Qt, QSize
 from PySide6.QtGui import QCloseEvent, QIcon, QMovie, QColor, QPainter, QPen
 from PySide6.QtWidgets import (
@@ -27,6 +29,8 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate,
     QSizePolicy,
     QStackedWidget,
+    QLineEdit,
+    QToolButton,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -589,6 +593,81 @@ class AppWindow(QMainWindow):
         form_layout.addRow(self._l("系统启动", "System Startup", "システム起動", "시스템 시작", "Démarrage système"), self.autostart_checkbox)
         form_layout.addRow(self._create_form_separator())
 
+        self.api_key_edit = QLineEdit()
+        self.api_key_edit.setObjectName("ApiKeyEdit")
+        self.api_key_edit.setPlaceholderText(
+            self._l(
+                "请输入 DeepSeek API Key",
+                "Enter DeepSeek API key",
+                "DeepSeek API キーを入力",
+                "DeepSeek API 키 입력",
+                "Saisissez la clé API DeepSeek",
+            )
+        )
+        self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        saved_api_key = self.settings_store.get_api_key()
+        self.api_key_edit.setText(saved_api_key)
+
+        api_key_row = QWidget()
+        api_key_layout = QHBoxLayout(api_key_row)
+        api_key_layout.setContentsMargins(0, 0, 0, 0)
+        api_key_layout.setSpacing(6)
+
+        self.api_key_visibility_btn = QToolButton()
+        self.api_key_visibility_btn.setText("👁")
+        self.api_key_visibility_btn.setCheckable(True)
+        self.api_key_visibility_btn.setToolTip(
+            self._l(
+                "显示/隐藏 API Key",
+                "Show/Hide API key",
+                "API キーの表示/非表示",
+                "API 키 표시/숨기기",
+                "Afficher/Masquer la clé API",
+            )
+        )
+        self.api_key_visibility_btn.setFixedWidth(36)
+        self.api_key_visibility_btn.toggled.connect(self._on_api_key_visibility_toggled)
+
+        self.api_key_confirm_btn = QPushButton(self._l("确认", "Confirm", "確認", "확인", "Confirmer"))
+        self.api_key_confirm_btn.setObjectName("ApiKeyActionBtn")
+        self.api_key_confirm_btn.setMinimumWidth(90)
+        self.api_key_confirm_btn.clicked.connect(self._on_api_key_confirm_clicked)
+
+        self.api_key_modify_btn = QPushButton(
+            self._l(
+                "修改API_key",
+                "Edit API Key",
+                "API キーを編集",
+                "API 키 수정",
+                "Modifier la clé API",
+            )
+        )
+        self.api_key_modify_btn.setObjectName("ApiKeyActionBtn")
+        self.api_key_modify_btn.setMinimumWidth(120)
+        self.api_key_modify_btn.clicked.connect(self._on_api_key_modify_clicked)
+
+        api_key_layout.addWidget(self.api_key_edit, stretch=1)
+        api_key_layout.addWidget(self.api_key_visibility_btn, stretch=0)
+        api_key_layout.addWidget(self.api_key_confirm_btn, stretch=0)
+        api_key_layout.addWidget(self.api_key_modify_btn, stretch=0)
+
+        has_saved_api_key = bool(saved_api_key)
+        self.api_key_edit.setReadOnly(has_saved_api_key)
+        self.api_key_confirm_btn.setEnabled(not has_saved_api_key)
+        self.api_key_modify_btn.setEnabled(has_saved_api_key)
+
+        form_layout.addRow(
+            self._l(
+                "DeepSeek API 密钥",
+                "DeepSeek API Key",
+                "DeepSeek API キー",
+                "DeepSeek API 키",
+                "Clé API DeepSeek",
+            ),
+            api_key_row,
+        )
+        form_layout.addRow(self._create_form_separator())
+
         self.close_behavior_combo = QComboBox()
         self.close_behavior_combo.addItem(self._l("每次询问", "Ask every time", "毎回確認", "매번 묻기", "Toujours demander"), userData="ask")
         self.close_behavior_combo.addItem(self._l("直接退出应用", "Quit directly", "そのまま終了", "바로 종료", "Quitter directement"), userData="quit")
@@ -1057,6 +1136,26 @@ class AppWindow(QMainWindow):
                 color: #6d4657;
                 font-size: 16px;
             }
+            QLineEdit#ApiKeyEdit {
+                background: #ffffff;
+                color: #111111;
+                border: 1px solid #111111;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 16px;
+                selection-background-color: #ececec;
+                selection-color: #111111;
+            }
+            QLineEdit#ApiKeyEdit:focus {
+                background: #ffffff;
+                color: #111111;
+                border: 2px solid #111111;
+            }
+            QPushButton#ApiKeyActionBtn {
+                min-height: 36px;
+                font-size: 14px;
+                padding: 6px 10px;
+            }
             QSpinBox {
                 background: #ffffff;
                 border: 1px solid #f0c7d8;
@@ -1208,6 +1307,55 @@ class AppWindow(QMainWindow):
         if isinstance(behavior, str):
             self.settings_store.set_close_behavior(behavior)
 
+    def _on_api_key_editing_finished(self):
+        """设置页 API Key 输入回调。"""
+        """EN: Settings page API key input callback."""
+        if not hasattr(self, "api_key_edit"):
+            return
+        api_key = str(self.api_key_edit.text() or "").strip()
+        self.settings_store.set_api_key(api_key)
+        if api_key:
+            os.environ["DEEPSEEK_API_KEY"] = api_key
+        else:
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+
+    def _on_api_key_confirm_clicked(self):
+        """确认保存 API Key，并锁定输入框。"""
+        """EN: Confirm and save API key, then lock input."""
+        self._on_api_key_editing_finished()
+        if hasattr(self, "api_key_edit"):
+            self.api_key_edit.setReadOnly(True)
+        if hasattr(self, "api_key_confirm_btn"):
+            self.api_key_confirm_btn.setEnabled(False)
+        if hasattr(self, "api_key_modify_btn"):
+            self.api_key_modify_btn.setEnabled(True)
+
+    def _on_api_key_modify_clicked(self):
+        """进入 API Key 修改模式。"""
+        """EN: Enter API key edit mode."""
+        if hasattr(self, "api_key_edit"):
+            self.api_key_edit.setReadOnly(False)
+            self.api_key_edit.setFocus()
+            self.api_key_edit.selectAll()
+        if hasattr(self, "api_key_confirm_btn"):
+            self.api_key_confirm_btn.setEnabled(True)
+        if hasattr(self, "api_key_modify_btn"):
+            self.api_key_modify_btn.setEnabled(False)
+
+    def _on_api_key_visibility_toggled(self, checked: bool):
+        """设置页 API Key 可见性切换回调。"""
+        """EN: Settings page API key visibility toggle callback."""
+        if not hasattr(self, "api_key_edit"):
+            return
+        if checked:
+            self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Normal)
+            if hasattr(self, "api_key_visibility_btn"):
+                self.api_key_visibility_btn.setText("🙈")
+            return
+        self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        if hasattr(self, "api_key_visibility_btn"):
+            self.api_key_visibility_btn.setText("👁")
+
     def eventFilter(self, watched, event):
         """过滤指定下拉框的滚轮事件，避免滚轮误改值。"""
         """EN: Filter the scrollwheel events of the specified drop-down box to avoid scrollwheel misalignment."""
@@ -1355,6 +1503,22 @@ class AppWindow(QMainWindow):
                 pass
             try:
                 self.music_list_widget.model().rowsMoved.disconnect(self._on_music_list_rows_moved)
+            except Exception:
+                pass
+
+        if hasattr(self, "api_key_visibility_btn"):
+            try:
+                self.api_key_visibility_btn.toggled.disconnect(self._on_api_key_visibility_toggled)
+            except Exception:
+                pass
+        if hasattr(self, "api_key_confirm_btn"):
+            try:
+                self.api_key_confirm_btn.clicked.disconnect(self._on_api_key_confirm_clicked)
+            except Exception:
+                pass
+        if hasattr(self, "api_key_modify_btn"):
+            try:
+                self.api_key_modify_btn.clicked.disconnect(self._on_api_key_modify_clicked)
             except Exception:
                 pass
 

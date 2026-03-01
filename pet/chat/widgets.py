@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import warnings
 import html as html_lib
 from datetime import datetime
 from pathlib import Path
@@ -28,13 +29,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..config import APP_NAME
+from ..config import APP_NAME, ROOT_DIR
 from .session import ChatMessage, ChatSession
 
-PET_AVATAR_PATH = Path(__file__).resolve().parents[2] / "gifs" / "photo.jpg"
-PLAYER_AVATAR_PATH = Path(__file__).resolve().parents[2] / "gifs" / "player.png"
-CHAT_BACKGROUND_PATH = Path(__file__).resolve().parents[2] / "gifs" / "chat_background.png"
-EMOJI_ASSETS_ROOT = Path(__file__).resolve().parents[2] / "gifs" / "assets"
+PET_AVATAR_PATH = Path(ROOT_DIR) / "gifs" / "photo.jpg"
+PLAYER_AVATAR_PATH = Path(ROOT_DIR) / "gifs" / "player.png"
+CHAT_BACKGROUND_PATH = Path(ROOT_DIR) / "gifs" / "chat_background.png"
+EMOJI_ASSETS_ROOT = Path(ROOT_DIR) / "gifs" / "assets"
+
+
+def _safe_disconnect(signal, slot):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        try:
+            signal.disconnect(slot)
+        except Exception:
+            pass
 
 
 class EmojiPickerPopup(QWidget):
@@ -342,11 +352,8 @@ class ChatTopBar(QWidget):
         self._refresh_clock()
 
     def dispose(self):
-        try:
-            self._clock_timer.timeout.disconnect(self._refresh_clock)
-        except Exception:
-            pass
         self._clock_timer.stop()
+        _safe_disconnect(self._clock_timer.timeout, self._refresh_clock)
 
     def _refresh_clock(self):
         self.time_label.setText(datetime.now().strftime("%H:%M:%S"))
@@ -507,6 +514,9 @@ class ChatPanel(QWidget):
         self._sending_timer = QTimer(self)
         self._sending_timer.setSingleShot(True)
         self._sending_timer.timeout.connect(self._on_sending_min_wait_done)
+        self._sending_guard_timer = QTimer(self)
+        self._sending_guard_timer.setSingleShot(True)
+        self._sending_guard_timer.timeout.connect(self._on_sending_guard_timeout)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -679,35 +689,21 @@ class ChatPanel(QWidget):
         self.input_edit.installEventFilter(self)
         self.session.message_added.connect(self._on_message_added)
         self.session.session_cleared.connect(self._on_session_cleared)
+        self.session.active_conversation_changed.connect(self._on_active_conversation_changed)
 
         self._update_send_btn_state()
 
-        for message in self.session.messages:
-            self._append_message_widget(message)
+        self._reload_current_conversation_messages()
         QTimer.singleShot(0, self._scroll_to_latest_message)
 
     def dispose(self):
         self.top_bar.dispose()
-        try:
-            self.send_btn.clicked.disconnect(self._on_send_clicked)
-        except Exception:
-            pass
-        try:
-            self.add_btn.clicked.disconnect(self._on_add_image_clicked)
-        except Exception:
-            pass
-        try:
-            self.session.message_added.disconnect(self._on_message_added)
-        except Exception:
-            pass
-        try:
-            self.session.session_cleared.disconnect(self._on_session_cleared)
-        except Exception:
-            pass
-        try:
-            self.input_edit.textChanged.disconnect(self._update_send_btn_state)
-        except Exception:
-            pass
+        _safe_disconnect(self.send_btn.clicked, self._on_send_clicked)
+        _safe_disconnect(self.add_btn.clicked, self._on_add_image_clicked)
+        _safe_disconnect(self.session.message_added, self._on_message_added)
+        _safe_disconnect(self.session.session_cleared, self._on_session_cleared)
+        _safe_disconnect(self.session.active_conversation_changed, self._on_active_conversation_changed)
+        _safe_disconnect(self.input_edit.textChanged, self._update_send_btn_state)
         try:
             self.input_edit.removeEventFilter(self)
         except Exception:
@@ -717,9 +713,12 @@ class ChatPanel(QWidget):
         except Exception:
             pass
         try:
-            self.emoji_picker.emoji_selected.disconnect(self._on_emoji_selected)
+            self._sending_guard_timer.stop()
         except Exception:
             pass
+        _safe_disconnect(self._sending_timer.timeout, self._on_sending_min_wait_done)
+        _safe_disconnect(self._sending_guard_timer.timeout, self._on_sending_guard_timeout)
+        _safe_disconnect(self.emoji_picker.emoji_selected, self._on_emoji_selected)
         for animation in self._animations:
             try:
                 animation.stop()
@@ -769,6 +768,22 @@ class ChatPanel(QWidget):
         row = ChatMessageRow(message)
         self.list_layout.insertWidget(self.list_layout.count() - 1, row)
         self._play_message_animation(row)
+        QTimer.singleShot(0, self._scroll_to_latest_message)
+
+    def _clear_message_widgets(self):
+        self._last_divider_key = ""
+        while self.list_layout.count() > 1:
+            item = self.list_layout.takeAt(0)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _reload_current_conversation_messages(self):
+        self._clear_message_widgets()
+        for message in self.session.messages:
+            self._append_message_widget(message)
         QTimer.singleShot(0, self._scroll_to_latest_message)
 
     def _on_open_emoji_picker(self):
@@ -932,27 +947,34 @@ class ChatPanel(QWidget):
             self.input_edit.setTextCursor(cursor)
             self._update_send_btn_state()
 
-    def _on_message_added(self, message: ChatMessage):
+    def _on_message_added(self, conversation_id: str, message: ChatMessage):
+        if str(conversation_id) != str(self.session.current_conversation_id):
+            return
         self._append_message_widget(message)
         if self._is_waiting_reply and message.role == "pet":
             self._reply_arrived = True
             self._try_finish_sending_state()
 
     def _on_session_cleared(self):
-        self._last_divider_key = ""
-        while self.list_layout.count() > 1:
-            item = self.list_layout.takeAt(0)
-            if item is None:
-                continue
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        self._clear_message_widgets()
 
         self._is_waiting_reply = False
         self._reply_arrived = False
         self._min_wait_elapsed = False
+        self._sending_guard_timer.stop()
         self.send_btn.setText("发送")
         self._update_send_btn_state()
+
+    def _on_active_conversation_changed(self, conversation_id: str):
+        _ = conversation_id
+        self._is_waiting_reply = False
+        self._reply_arrived = False
+        self._min_wait_elapsed = False
+        self._sending_timer.stop()
+        self._sending_guard_timer.stop()
+        self.send_btn.setText("发送")
+        self._update_send_btn_state()
+        self._reload_current_conversation_messages()
 
     def _show_empty_hint(self):
         self.empty_hint_label.show()
@@ -967,6 +989,8 @@ class ChatPanel(QWidget):
         self.send_btn.setEnabled(False)
         self._sending_timer.stop()
         self._sending_timer.start(1000)
+        self._sending_guard_timer.stop()
+        self._sending_guard_timer.start(45000)
 
     def _on_sending_min_wait_done(self):
         self._min_wait_elapsed = True
@@ -979,8 +1003,22 @@ class ChatPanel(QWidget):
             return
 
         self._is_waiting_reply = False
+        self._sending_guard_timer.stop()
         self.send_btn.setText("发送")
         self._update_send_btn_state()
+
+    def _on_sending_guard_timeout(self):
+        if not self._is_waiting_reply:
+            return
+        self._is_waiting_reply = False
+        self._reply_arrived = False
+        self._min_wait_elapsed = False
+        self.send_btn.setText("发送")
+        self._update_send_btn_state()
+        self.empty_hint_label.setText("请求超时，已恢复发送")
+        self.empty_hint_label.show()
+        QTimer.singleShot(1400, self.empty_hint_label.hide)
+        QTimer.singleShot(1600, lambda: self.empty_hint_label.setText("不能发送空消息"))
 
     def _play_message_animation(self, widget: QWidget):
         effect = QGraphicsOpacityEffect(widget)

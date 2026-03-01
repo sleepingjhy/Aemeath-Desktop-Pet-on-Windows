@@ -1,7 +1,17 @@
 """这是应用入口模块。负责初始化桌宠窗口、主界面与系统托盘。"""
 """EN: Application entry point. Initializes pet windows, app window, and system tray."""
 
+import os
 import sys
+
+_existing_qt_logging_rules = os.environ.get("QT_LOGGING_RULES", "").strip()
+_ffmpeg_log_rule = "qt.multimedia.ffmpeg=false"
+if _ffmpeg_log_rule not in _existing_qt_logging_rules:
+    if _existing_qt_logging_rules:
+        os.environ["QT_LOGGING_RULES"] = f"{_existing_qt_logging_rules};{_ffmpeg_log_rule}"
+    else:
+        os.environ["QT_LOGGING_RULES"] = _ffmpeg_log_rule
+
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication
 
@@ -33,6 +43,9 @@ def main():
     # 初始化设置存储与关闭策略。
     # EN: Initialize settings store and close-policy manager.
     settings_store = SettingsStore()
+    stored_api_key = settings_store.get_api_key()
+    if stored_api_key:
+        os.environ["DEEPSEEK_API_KEY"] = stored_api_key
     close_policy = ClosePolicyManager(settings_store)
 
     # 初始化音乐播放器单例。
@@ -87,7 +100,7 @@ def main():
     def request_quit():
         """执行统一退出流程。包含防重入、资源清理和应用退出。"""
         """EN: Execute unified quit flow with guard, cleanup, and app exit."""
-        nonlocal is_quitting, manager, app_window, tray_controller
+        nonlocal is_quitting, manager, app_window, tray_controller, chat_window
 
         if is_quitting:
             return
@@ -118,6 +131,10 @@ def main():
                 chat_window.close()
             if hasattr(chat_window, "deleteLater") and callable(chat_window.deleteLater):
                 chat_window.deleteLater()
+            chat_window = None
+
+        if chat_session is not None and hasattr(chat_session, "dispose") and callable(chat_session.dispose):
+            chat_session.dispose()
 
         if tray_controller is not None:
             if hasattr(tray_controller, "dispose") and callable(tray_controller.dispose):
