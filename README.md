@@ -1,9 +1,9 @@
 ﻿<div align="center">
-  <h2 style="font-size: 4em;">Ameath Desktop Pet on Windows</h2>
+  <h2 style="font-size: 4em;">Aemeath Desktop Pet on Windows</h2>
 </div>
 
 <div align="center">
-  <img src="gifs/ameath.gif" alt="ameath" width="648" height="648"/>
+  <img src="gifs/aemeath.gif" alt="aemeath" width="648" height="648"/>
 </div>
 
 ---
@@ -35,8 +35,8 @@
 1. 克隆项目
 
 ```powershell
-git clone https://github.com/sleepingjhy/Ameath-Desktop-Pet-on-Windows.git
-cd Ameath-Desktop-Pet-on-Windows
+git clone https://github.com/sleepingjhy/Aemeath-Desktop-Pet-on-Windows.git
+cd Aemeath-Desktop-Pet-on-Windows
 ```
 
 2. 安装依赖（建议使用虚拟环境）
@@ -225,7 +225,7 @@ $env:DEEPSEEK_API_KEY="YOUR_API_KEY"
 
 - 向右移动：`move.gif`
 - 向左移动：`move.gif` 镜像
-- 休息动画：随机播放 `ameath.gif`、`idle1.gif`、`idle2.gif`、`idle3.gif`、`idle4.gif`
+- 休息动画：随机播放 `aemeath.gif`、`idle1.gif`、`idle2.gif`、`idle3.gif`、`idle4.gif`
 - 自动移动速度按当前屏幕分辨率计算：约 20 秒从左边界移动到右边界，上下浮动20%
 - 移动时会随机出现上下左右移动
 - 触达屏幕边缘后会立即反弹（不穿屏）
@@ -233,14 +233,14 @@ $env:DEEPSEEK_API_KEY="YOUR_API_KEY"
 ### EXE前端界面
 
 - 主界面包含"设置""聊天""音乐""关于"四个页面。
-- 左上角显示 `gifs/ameath.ico`，并作为应用与托盘图标。
+- 左上角显示 `gifs/aemeath.ico`，并作为应用与托盘图标。
 - "设置"页面覆盖右键菜单可配置功能：停止移动、跟随鼠标、缩放比例、透明度、显示优先级、多开数量、开机自启、退出应用、关闭行为策略。
 - 设置页"移动控制"的按钮文案会在"停止移动 / 恢复移动"之间切换，且作用范围为全部实例。
 - 右键菜单中的"停止移动 / 恢复移动"仅作用于当前实例，用于单独控制某一只桌宠。
 - 设置页中可配置项（如跟随、缩放、显示优先级、多开数量、透明度、关闭行为）会写入本地记录，重启后自动恢复。
 - 透明度在设置页使用横向滑动条无级设置（0% ~ 100%，默认 100%），并与右键菜单实时同步。
 - 显示优先级与多开数量支持设置页和右键菜单双向实时同步。
-- "关于"页面居中显示 `ameath.gif`（648×648），下方区域为作者发电文字。
+- "关于"页面居中显示 `aemeath.gif`（648×648），下方区域为作者发电文字。
 - 显示优先级：
   - 所有处于显示状态的桌宠实例都会保持在窗口化应用之上（置顶层级）。
   - 始终置顶：桌宠保持置顶显示。
@@ -272,7 +272,7 @@ $env:DEEPSEEK_API_KEY="YOUR_API_KEY"
 ./exe/build_exe.ps1
 ```
 
-- 打包产物在 `exe/dist/AmeathDesktopPet/`。
+- 打包产物在 `exe/dist/AemeathDesktopPet/`。
 - `exe` 目录包含构建脚本、spec、build、dist 等 EXE 相关文件。
 
 ---
@@ -280,7 +280,7 @@ $env:DEEPSEEK_API_KEY="YOUR_API_KEY"
 ## 项目结构
 
 ```text
-📦 Ameath_Desktop_Pet
+📦 Aemeath_Desktop_Pet
 ├── 🐍 main.py               # 程序入口，启动桌宠事件循环
 ├── 📄 requirements.txt      # Python 依赖列表
 ├── 📁 music                 # 音乐目录（仓库仅保留目录结构，不包含音频文件）
@@ -320,7 +320,7 @@ $env:DEEPSEEK_API_KEY="YOUR_API_KEY"
 
 ### Overview
 
-Ameath Desktop Pet is a Windows desktop pet application built with **PySide6**.
+Aemeath Desktop Pet is a Windows desktop pet application built with **PySide6**.
 It supports draggable animated pets, multi-instance control, display policies, system tray integration, and a built-in music player.
 
 ### Requirements
@@ -334,8 +334,8 @@ It supports draggable animated pets, multi-instance control, display policies, s
 1. Clone the repository
 
 ```powershell
-git clone https://github.com/sleepingjhy/Ameath-Desktop-Pet-on-Windows.git
-cd Ameath-Desktop-Pet-on-Windows
+git clone https://github.com/sleepingjhy/Aemeath-Desktop-Pet-on-Windows.git
+cd Aemeath-Desktop-Pet-on-Windows
 ```
 
 2. Install dependencies
@@ -464,19 +464,19 @@ python main.py
 - Animation rules:
   - Moving right: `move.gif`.
   - Moving left: mirrored `move.gif`.
-  - Idle animations randomly selected from `ameath.gif`, `idle1.gif`, `idle2.gif`, `idle3.gif`, `idle4.gif`.
+  - Idle animations randomly selected from `aemeath.gif`, `idle1.gif`, `idle2.gif`, `idle3.gif`, `idle4.gif`.
   - Auto-move speed adapts to screen resolution, targeting about 20 seconds from left boundary to right boundary, with ±20% fluctuation.
   - Random movement includes up/down/left/right motion.
   - Pet bounces immediately at screen edges (never moves out of screen).
 - EXE frontend UI:
   - Main window includes `Settings` and `About` pages.
-  - `gifs/ameath.ico` is used as both app icon and tray icon.
+  - `gifs/aemeath.ico` is used as both app icon and tray icon.
   - Settings page covers move control, follow mouse, scale, opacity, display priority, instance count, auto-start, app exit, and close behavior.
   - Settings-page move control applies to all instances; right-click move control applies to current instance only.
   - Configurable settings are persisted locally and restored after restart.
   - Opacity in Settings uses continuous slider (`0%` to `100%`, default `100%`) and syncs with context menu.
   - Display priority and instance count support real-time two-way synchronization between Settings and context menu.
-  - About page centers `ameath.gif` (`648 × 648`) with author-support text below.
+  - About page centers `aemeath.gif` (`648 × 648`) with author-support text below.
 - Display priority and multi-instance behavior:
   - Visible pet instances stay above normal windowed apps.
   - `Always on Top`: always displayed on top.
@@ -499,4 +499,4 @@ python main.py
 ./exe/build_exe.ps1
 ```
 
-Build output is generated under `exe/dist/AmeathDesktopPet/`.
+Build output is generated under `exe/dist/AemeathDesktopPet/`.
