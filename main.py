@@ -29,6 +29,10 @@ from pet.window import DesktopPet
 def main():
     """启动应用主流程。统一拉起桌宠、主界面与托盘控制。"""
     """EN: Start the main app flow and bootstrap pet, app window, and tray controller."""
+    # 检测是否为开机自启启动
+    # EN: Detect whether this is an autostart launch
+    is_autostart = "--autostart" in sys.argv
+
     # 先创建 Qt 应用对象。所有 QWidget 生命周期都依赖它。
     # EN: Create the Qt application first. All QWidget lifecycles depend on it.
     app = QApplication(sys.argv)
@@ -203,9 +207,17 @@ def main():
     # EN: Expand/shrink instances to match configured target count.
     manager.on_set_instance_count(settings_store.get_instance_count())
 
-    # 启动时同时展示桌宠窗口与主界面。
-    # EN: Show both pet window(s) and app window on startup.
-    app_window.show_window()
+    # 启动时根据启动方式和配置决定是否展示主界面。
+    # EN: Show app window based on startup mode and user preference.
+    if is_autostart:
+        # 开机自启时，根据用户配置决定是否显示主窗口
+        # EN: On autostart, show main window based on user preference
+        if settings_store.get_autostart_show_window():
+            app_window.show_window()
+    else:
+        # 手动启动时始终显示主窗口
+        # EN: Always show main window on manual launch
+        app_window.show_window()
 
     # 最后进入事件循环。用户关闭窗口后才会返回。
     # EN: Enter the Qt event loop; returns only after app exits.

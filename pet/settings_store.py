@@ -41,6 +41,7 @@ class SettingsStore:
             "scale_factor": 1.0,
             "language": "zh-CN",
             "api_key": "",
+            "autostart_show_window": True,
         }
         self._load()
 
@@ -214,4 +215,15 @@ class SettingsStore:
         """更新 DeepSeek API Key 并保存。"""
         """EN: Update DeepSeek API key and save."""
         self.data["api_key"] = str(api_key or "").strip()
+        self.save()
+
+    def get_autostart_show_window(self) -> bool:
+        """读取开机自启时是否显示窗口的配置。"""
+        """EN: Read the configuration for showing window on autostart."""
+        return bool(self.data.get("autostart_show_window", True))
+
+    def set_autostart_show_window(self, enabled: bool):
+        """更新开机自启时是否显示窗口的配置并保存。"""
+        """EN: Update the configuration for showing window on autostart and save."""
+        self.data["autostart_show_window"] = bool(enabled)
         self.save()

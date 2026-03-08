@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSlider,
     QSpinBox,
+    QStyle,
     QStyledItemDelegate,
     QSizePolicy,
     QStackedWidget,
@@ -42,6 +43,7 @@ from .config import (
     DISPLAY_MODE_ALWAYS_ON_TOP,
     DISPLAY_MODE_DESKTOP_ONLY,
     DISPLAY_MODE_FULLSCREEN_HIDE,
+    GIFS_DIR,
     INSTANCE_COUNT_MAX,
     INSTANCE_COUNT_MIN,
     OPACITY_DEFAULT_PERCENT,
@@ -54,8 +56,8 @@ from .i18n import get_language_items, normalize_language, tr
 
 
 class MusicDeleteCheckDelegate(QStyledItemDelegate):
-    """删除模式下在左侧自绘蓝框与白色勾。"""
-    """EN: Draw left-side blue checkbox and white tick in delete mode."""
+    """删除模式下在左侧自绘复选框，样式与设置页面保持一致。"""
+    """EN: Draw left-side checkbox in delete mode, style consistent with settings page."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,10 +69,11 @@ class MusicDeleteCheckDelegate(QStyledItemDelegate):
     def paint(self, painter: QPainter, option, index):
         super().paint(painter, option, index)
 
-        if not self._delete_mode:
-            return
-
-        size = 16
+        # 始终绘制复选框样式，与设置页面保持一致
+        # EN: Always draw checkbox style, consistent with settings page
+        # 与设置页面 QCheckBox::indicator 尺寸一致: 18x18
+        # EN: Consistent with settings page QCheckBox::indicator size: 18x18
+        size = 18
         left = option.rect.left() + 8
         top = option.rect.top() + (option.rect.height() - size) // 2
 
@@ -84,20 +87,56 @@ class MusicDeleteCheckDelegate(QStyledItemDelegate):
                 checked = int(state_data) == int(Qt.CheckState.Checked)
             except Exception:
                 checked = state_data == Qt.CheckState.Checked
-        border_color = QColor("#2f75ff") if checked else QColor("#6aa5ff")
-        fill_color = QColor("#3b82f6") if checked else QColor("#d7e8ff")
 
-        painter.setPen(QPen(border_color, 1))
+        # 检测悬停状态
+        # EN: Detect hover state
+        is_hover = bool(option.state & QStyle.StateFlag.State_MouseOver)
+
+        # 与设置页面样式完全一致
+        # EN: Exactly consistent with settings page style
+        if self._delete_mode:
+            # 删除模式下显示正常复选框样式
+            # EN: In delete mode, show normal checkbox style
+            if checked:
+                if is_hover:
+                    # QCheckBox::indicator:checked:hover
+                    border_color = QColor("#b06090")
+                    fill_color = QColor("#d070a0")
+                else:
+                    # QCheckBox::indicator:checked
+                    border_color = QColor("#d070a0")
+                    fill_color = QColor("#e08ab0")
+            else:
+                if is_hover:
+                    # QCheckBox::indicator:hover
+                    border_color = QColor("#b07090")
+                    fill_color = QColor("#fdf")
+                else:
+                    # QCheckBox::indicator (normal state)
+                    border_color = QColor("#d0a0b0")
+                    fill_color = QColor("#ffffff")
+        else:
+            # 非删除模式下显示禁用状态样式
+            # EN: In non-delete mode, show disabled state style
+            border_color = QColor("#d0c0c5")
+            fill_color = QColor("#f0e0e5")
+
+        # border: 2px solid, border-radius: 4px
+        painter.setPen(QPen(border_color, 2))
         painter.setBrush(fill_color)
-        painter.drawRoundedRect(left, top, size, size, 3, 3)
+        painter.drawRoundedRect(left, top, size, size, 4, 4)
 
-        if checked:
-            tick_pen = QPen(QColor("#ffffff"), 2)
+        if checked and self._delete_mode:
+            # 绘制白色勾选标记，路径与 check.svg 完全一致
+            # EN: Draw white checkmark, path exactly matches check.svg
+            # SVG path: M3 9l4 4 8-8 (在 18x18 画布上)
+            tick_pen = QPen(QColor("#ffffff"), 2.5)
             tick_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             tick_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(tick_pen)
-            painter.drawLine(left + 4, top + 8, left + 7, top + 11)
-            painter.drawLine(left + 7, top + 11, left + 12, top + 5)
+            # 勾选标记路径: (3,9) -> (7,13) -> (15,5)
+            painter.drawLine(left + 3, top + 9, left + 7, top + 13)
+            painter.drawLine(left + 7, top + 13, left + 15, top + 5)
 
         painter.restore()
 
@@ -405,6 +444,16 @@ class AppWindow(QMainWindow):
         self.autostart_checkbox.setChecked(bool(enabled))
         self.autostart_checkbox.blockSignals(False)
 
+        # 同步更新"自启时自动弹窗"选项的启用状态
+        # EN: Sync the enabled state of "show window on autostart" option
+        self.autostart_show_checkbox.setEnabled(bool(enabled))
+        if not enabled:
+            # 开机自启关闭时，自动取消勾选"自启时自动弹窗"
+            # EN: When autostart is disabled, uncheck "show window on autostart"
+            self.autostart_show_checkbox.blockSignals(True)
+            self.autostart_show_checkbox.setChecked(False)
+            self.autostart_show_checkbox.blockSignals(False)
+
     def _on_pet_display_mode_changed(self, mode: str):
         """接收显示模式变化并更新设置页下拉。"""
         """EN: Receive display mode changes and update settings page dropdown."""
@@ -587,10 +636,28 @@ class AppWindow(QMainWindow):
         form_layout.addRow(tr(self.language, "menu.opacity"), opacity_row)
         form_layout.addRow(self._create_form_separator())
 
+        # 开机自启选项
         self.autostart_checkbox = QCheckBox(tr(self.language, "menu.autostart"))
         self.autostart_checkbox.setChecked(self.pet.get_autostart_enabled())
         self.autostart_checkbox.toggled.connect(self._on_autostart_toggled)
         form_layout.addRow(self._l("系统启动", "System Startup", "システム起動", "시스템 시작", "Démarrage système"), self.autostart_checkbox)
+
+        # 自启时自动弹窗选项
+        # EN: Option to show window on autostart
+        self.autostart_show_checkbox = QCheckBox(
+            self._l("自启时自动弹窗", "Show window on autostart",
+                    "自動起動時にウィンドウを表示", "자동 실행 시 창 표시",
+                    "Afficher au démarrage auto")
+        )
+        # 根据开机自启状态初始化启用状态和勾选状态
+        # EN: Initialize enabled and checked state based on autostart status
+        autostart_enabled = self.pet.get_autostart_enabled()
+        self.autostart_show_checkbox.setChecked(
+            autostart_enabled and self.settings_store.get_autostart_show_window()
+        )
+        self.autostart_show_checkbox.setEnabled(autostart_enabled)
+        self.autostart_show_checkbox.toggled.connect(self._on_autostart_show_toggled)
+        form_layout.addRow("", self.autostart_show_checkbox)
         form_layout.addRow(self._create_form_separator())
 
         self.api_key_edit = QLineEdit()
@@ -1168,6 +1235,35 @@ class AppWindow(QMainWindow):
             QCheckBox {
                 color: #6d4657;
                 font-size: 16px;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #d0a0b0;
+                border-radius: 4px;
+                background: #fff;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #b07090;
+                background: #fdf;
+            }
+            QCheckBox::indicator:checked {
+                background: #e08ab0;
+                border: 2px solid #d070a0;
+                image: url(%(check_icon)s);
+            }
+            QCheckBox::indicator:checked:hover {
+                background: #d070a0;
+                border: 2px solid #b06090;
+                image: url(%(check_icon)s);
+            }
+            QCheckBox::indicator:disabled {
+                background: #f0e0e5;
+                border: 2px solid #d0c0c5;
+            }
+            QCheckBox:disabled {
+                color: #a09095;
             }
             QLabel#MusicTrackLabel {
                 font-size: 18px;
@@ -1233,15 +1329,19 @@ class AppWindow(QMainWindow):
                 background: #fff0f7;
             }
             QLabel#MusicDeleteModeHint {
-                color: #1d4ed8;
+                color: #7a4b60;
                 font-size: 14px;
                 font-weight: 600;
-                background: #dbeafe;
-                border: 1px solid #93c5fd;
+                background: #ffeaf3;
+                border: 1px solid #f3c6da;
                 border-radius: 8px;
                 padding: 8px 10px;
             }
             """
+        # 注入勾选图标路径
+        # EN: Inject check icon path
+        check_icon_path = str((GIFS_DIR / "check.svg").resolve()).replace("\\", "/")
+        style = style % {"check_icon": check_icon_path}
         self.setStyleSheet(style)
 
     def _on_follow_toggled(self, checked: bool):
@@ -1261,6 +1361,19 @@ class AppWindow(QMainWindow):
         """设置页开机自启开关回调。"""
         """EN: Set the page boot auto-open switch callback."""
         self.pet.on_toggle_autostart(checked)
+
+        # 联动控制"自启时自动弹窗"选项
+        # EN: Control the "show window on autostart" option
+        self.autostart_show_checkbox.setEnabled(checked)
+        if not checked:
+            # 开机自启关闭时，自动关闭并禁用"自启时自动弹窗"
+            # EN: When autostart is disabled, disable and uncheck "show window"
+            self.autostart_show_checkbox.setChecked(False)
+
+    def _on_autostart_show_toggled(self, checked: bool):
+        """开机自启时自动显示界面选项的回调。"""
+        """EN: Callback for the autostart show window option."""
+        self.settings_store.set_autostart_show_window(checked)
 
     def _on_toggle_move_clicked(self):
         """设置页移动开关按钮回调。作用于全部实例。"""

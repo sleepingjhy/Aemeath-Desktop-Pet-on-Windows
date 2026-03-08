@@ -13,11 +13,11 @@ def _build_launch_command() -> str:
     if getattr(sys, "frozen", False):
         # 打包模式直接启动可执行文件。入口由打包器固化。
         # EN: Packaging mode launches the executable directly. The inlet is cured by the packer.
-        return f'"{Path(sys.executable).resolve()}"'
+        return f'"{Path(sys.executable).resolve()}" --autostart'
     # 源码模式启动 main.py。使用当前解释器执行脚本入口。
     # EN: Start main.py in source mode. Execute the script entry using the current interpreter.
     main_py = (ROOT_DIR / "main.py").resolve()
-    return f'"{Path(sys.executable).resolve()}" "{main_py}"'
+    return f'"{Path(sys.executable).resolve()}" "{main_py}" --autostart'
 
 
 def is_autostart_enabled() -> bool:

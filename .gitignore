@@ -16,3 +16,6 @@ dist/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Qoder CLI local config
+.qoder/
